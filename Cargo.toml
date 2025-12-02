@@ -1,5 +1,5 @@
 [package]
-name = "rust_matrix"
+name = "rust_advent_matrix"
 version = "1.0.0"
 edition = "2024"
 license-file = "LICENSE"
