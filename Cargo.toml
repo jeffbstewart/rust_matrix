@@ -7,7 +7,7 @@ description = "a pure-safe-rust, zero dependency matrix data structure"
 homepage = "https://github.com/jeffbstewart/rust_matrix"
 repository = "https://github.com/jeffbstewart/rust_matrix"
 readme = "README.md"
-exclude = ["target", ".git", ""]
+exclude = ["target", ".git"]
 
 [dependencies]
 
