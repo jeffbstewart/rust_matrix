@@ -1,7 +1,9 @@
 // Copyright 2025 Jeffrey B. Stewart <jeff@stewart.net>.  All Rights Reserved.
 
-use crate::{Column, Coordinate, Matrix, Row};
+use crate::{Coordinate, Matrix};
+use crate::column::Column;
 use crate::matrix_address::MatrixAddress;
+use crate::row::Row;
 
 /// MatrixForwardIterator returns the available addresses in a matrix in
 /// row-major format starting at the origin, or upper left (0, 0) address.
@@ -57,18 +59,61 @@ impl <I> Iterator for MatrixForwardIterator<I>
     }
 }
 
+/// MatrixValueIterator returns the values in a matrix
+/// in row-major order, starting at the upper left origin (0, 0).
+pub struct MatrixValueIterator<'a, T, I>
+where
+    T: 'a,
+    I: Coordinate,
+{
+    matrix: &'a dyn Matrix<'a, T, I>,
+    addrs: MatrixForwardIterator<I>,
+}
+
+impl <'a, T, I> MatrixValueIterator<'a, T, I>
+where
+    T: 'static,
+    I: Coordinate,
+{
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>) -> Self {
+        MatrixValueIterator{
+            matrix,
+            addrs: matrix.addresses(),
+        }
+    }
+}
+
+impl <'a, T, I> Iterator for MatrixValueIterator<'a, T, I>
+where
+    T: 'a,
+    I: Coordinate {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.addrs.next() {
+            None => None,
+            Some(addr) => Some(self.matrix.get(addr).unwrap()),
+        }
+    }
+}
+
 /// MatrixForwardIndexedIterator returns (address, value) tuples for
 /// a matrix in row-major order, starting at the upper left origin (0,0).
 pub struct MatrixForwardIndexedIterator<'a, T, I>
-where I: Coordinate
+where
+    T: 'a,
+    I: Coordinate,
 {
-    matrix: &'a Matrix<T, I>,
+    matrix: &'a dyn Matrix<'a, T, I>,
     addrs: MatrixForwardIterator<I>,
 }
 
 impl <'a, T, I> MatrixForwardIndexedIterator<'a, T, I>
-where I: Coordinate {
-    pub(crate) fn new(matrix: &'a Matrix<T, I>) -> Self {
+where
+    T: 'static,
+    I: Coordinate,
+{
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>) -> Self {
         MatrixForwardIndexedIterator{
             matrix,
             addrs: MatrixForwardIterator::new(MatrixAddress{
@@ -80,7 +125,10 @@ where I: Coordinate {
 }
 
 impl <'a, T, I> Iterator for MatrixForwardIndexedIterator<'a, T, I>
-where I: Coordinate {
+where
+    T: 'static,
+    I: Coordinate,
+{
     type Item = (MatrixAddress<I>, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -93,8 +141,9 @@ where I: Coordinate {
 
 pub struct MatrixRowIterator<'a, T, I>
 where
+    T: 'static,
     I: Coordinate {
-    matrix: &'a Matrix<T, I>,
+    matrix: &'a dyn Matrix<'a, T, I>,
     row: I,
     column_cursor_forward: I,
     column_cursor_back: I,
@@ -103,9 +152,10 @@ where
 
 impl <'a, T, I> MatrixRowIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate
 {
-    pub(crate) fn new(matrix: &'a Matrix<T, I>, row: I) -> Self {
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>, row: I) -> Self {
         MatrixRowIterator{
             matrix,
             row,
@@ -118,6 +168,7 @@ where
 
 impl <'a, T, I> Iterator for MatrixRowIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     type Item = &'a T;
@@ -145,6 +196,7 @@ where
 
 impl <'a, T, I> DoubleEndedIterator for MatrixRowIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -168,8 +220,9 @@ where
 
 pub struct MatrixRowsIterator<'a, T, I>
 where
+    T: 'static,
     I: Coordinate {
-    matrix: &'a Matrix<T, I>,
+    matrix: &'a dyn Matrix<'a, T, I>,
     row_cursor_forward: I,
     row_cursor_back: I,
     terminated: bool,
@@ -177,9 +230,10 @@ where
 
 impl <'a, T, I> MatrixRowsIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate
 {
-    pub(crate) fn new(matrix: &'a Matrix<T, I>) -> Self {
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>) -> Self {
         MatrixRowsIterator{
             matrix,
             row_cursor_forward: I::unit() - I::unit(),
@@ -191,6 +245,7 @@ where
 
 impl <'a, T, I> Iterator for MatrixRowsIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     type Item = Row<'a, T, I>;
@@ -214,6 +269,7 @@ where
 
 impl <'a, T, I> DoubleEndedIterator for MatrixRowsIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -234,8 +290,9 @@ where
 
 pub struct MatrixColumnIterator<'a, T, I>
 where
+    T: 'static,
     I: Coordinate {
-    matrix: &'a Matrix<T, I>,
+    matrix: &'a dyn Matrix<'a, T, I>,
     column: I,
     row_cursor_forward: I,
     row_cursor_back: I,
@@ -244,9 +301,10 @@ where
 
 impl <'a, T, I> MatrixColumnIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate
 {
-    pub(crate) fn new(matrix: &'a Matrix<T, I>, column: I) -> Self {
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>, column: I) -> Self {
         MatrixColumnIterator{
             matrix,
             column,
@@ -259,6 +317,7 @@ where
 
 impl <'a, T, I> Iterator for MatrixColumnIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     type Item = &'a T;
@@ -286,6 +345,7 @@ where
 
 impl <'a, T, I> DoubleEndedIterator for MatrixColumnIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -309,8 +369,10 @@ where
 
 pub struct MatrixColumnsIterator<'a, T, I>
 where
-    I: Coordinate {
-    matrix: &'a Matrix<T, I>,
+    T: 'a,
+    I: Coordinate,
+{
+    matrix: &'a dyn Matrix<'a, T, I>,
     column_cursor_forward: I,
     column_cursor_back: I,
     terminated: bool,
@@ -318,9 +380,10 @@ where
 
 impl <'a, T, I> MatrixColumnsIterator<'a, T, I>
 where
+    T: 'static,
     I: Coordinate
 {
-    pub(crate) fn new(matrix: &'a Matrix<T, I>) -> Self {
+    pub(crate) fn new(matrix: &'a dyn Matrix<'a, T, I>) -> Self {
         MatrixColumnsIterator{
             matrix,
             column_cursor_forward: I::unit() - I::unit(),
@@ -332,6 +395,7 @@ where
 
 impl <'a, T, I> Iterator for MatrixColumnsIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     type Item = Column<'a, T, I>;
@@ -355,6 +419,7 @@ where
 
 impl <'a, T, I> DoubleEndedIterator for MatrixColumnsIterator<'a, T, I>
 where
+    T: 'a,
     I: Coordinate,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -374,7 +439,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{FormatOptions, MatrixParseOptions};
+    use crate::factories::new_default_matrix;
+    use crate::format::FormatOptions;
     use super::*;
 
     fn u8addr(row: u8, column: u8) -> MatrixAddress<u8> {
@@ -403,13 +469,13 @@ mod tests {
 
     #[test]
     fn indexed_iterator_as_expected() {
-        let matrix: Matrix<String, u8> = MatrixParseOptions{
-            opts: FormatOptions{
-                row_delimiter: "|".to_string(),
-                column_delimiter: ",".to_string(),
-            },
-            element_parser: Box::new(|x| x.to_string())
-        }.parse("a,bc,d|d,ef,g").unwrap();
+        let opts = FormatOptions{
+            row_delimiter: "|".to_string(),
+            column_delimiter: ",".to_string(),
+        };
+        let matrix = opts.parse_matrix(
+            "a,bc,d|d,ef,g",
+            |x| x.to_string()).unwrap();
         let mut iter = matrix.indexed_iter();
         let (a1, v1) = (&mut iter).next().unwrap();
         assert_eq!(a1, u8addr(0, 0));
@@ -434,25 +500,22 @@ mod tests {
 
     #[test]
     fn empty_indexed_iterator_as_expected() {
-        let matrix: Matrix<u8, u8> = Matrix::new_default(0, 0).unwrap();
+        let matrix = new_default_matrix::<u8, u8>(0, 0).unwrap();
         let mut iter = matrix.indexed_iter();
         assert!((&mut iter).next().is_none());
     }
 
-    fn ascii_parser() -> MatrixParseOptions::<String> {
-        MatrixParseOptions::<String>{
-            opts: FormatOptions{
-                row_delimiter: "\n".to_string(),
-                column_delimiter: "".to_string(),
-            },
-            element_parser: Box::new(|t| t.to_string()),
+    fn ascii_parse_opts<'a>() -> FormatOptions {
+        FormatOptions{
+            row_delimiter: "\n".to_string(),
+            column_delimiter: "".to_string(),
         }
     }
 
     #[test]
     fn row_iterator_forward_only() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let row0 = matrix.row(0).unwrap().iter();
         let values: Vec<&String> = row0.collect();
         assert_eq!(values, vec!["A", "B", "C"]);
@@ -460,8 +523,8 @@ mod tests {
 
     #[test]
     fn row_iterator_reverse_only() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let row0 = matrix.row(0).unwrap().iter().rev();
         let values: Vec<&String> = row0.collect();
         assert_eq!(values, vec!["C", "B", "A"]);
@@ -469,8 +532,8 @@ mod tests {
 
     #[test]
     fn row_iterator_forward_passes_reverse() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut row0 = matrix.row(0).unwrap().iter();
         assert_eq!(row0.next(), Some(&"A".to_string()));
         assert_eq!(row0.next_back(), Some(&"C".to_string()));
@@ -481,8 +544,8 @@ mod tests {
 
     #[test]
     fn row_iterator_reverse_passes_forward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut row1 = matrix.row(1).unwrap().iter();
         assert_eq!(row1.next(), Some(&"D".to_string()));
         assert_eq!(row1.next_back(), Some(&"F".to_string()));
@@ -493,8 +556,8 @@ mod tests {
 
     #[test]
     fn rows_iterator_forward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut rows = matrix.rows();
         let row1 = rows.next().unwrap();
         let values1: Vec<&String> = row1.iter().collect();
@@ -507,8 +570,8 @@ mod tests {
 
     #[test]
     fn rows_iterator_backward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut rows = matrix.rows().rev();
         let row1 = rows.next().unwrap();
         let values1: Vec<&String> = row1.iter().collect();
@@ -522,8 +585,8 @@ mod tests {
 
     #[test]
     fn column_iterator_forward_only() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let column0 = matrix.column(0).unwrap().iter();
         let values: Vec<&String> = column0.collect();
         assert_eq!(values, vec!["A", "D"]);
@@ -531,8 +594,8 @@ mod tests {
 
     #[test]
     fn column_iterator_reverse_only() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let column0 = matrix.column(0).unwrap().iter().rev();
         let values: Vec<&String> = column0.collect();
         assert_eq!(values, vec!["D", "A"]);
@@ -540,8 +603,8 @@ mod tests {
 
     #[test]
     fn column_iterator_forward_passes_reverse() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut column0 = matrix.column(0).unwrap().iter();
         assert_eq!(column0.next(), Some(&"A".to_string()));
         assert_eq!(column0.next_back(), Some(&"D".to_string()));
@@ -551,8 +614,8 @@ mod tests {
 
     #[test]
     fn column_iterator_reverse_passes_forward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut column1 = matrix.column(1).unwrap().iter();
         assert_eq!(column1.next(), Some(&"B".to_string()));
         assert_eq!(column1.next_back(), Some(&"E".to_string()));
@@ -562,8 +625,8 @@ mod tests {
 
     #[test]
     fn columns_iterator_forward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut columns = matrix.columns();
         let column1 = columns.next().unwrap();
         let values1: Vec<&String> = column1.iter().collect();
@@ -579,8 +642,8 @@ mod tests {
 
     #[test]
     fn columns_iterator_backward() {
-        let opts = ascii_parser();
-        let matrix: Matrix<String, u8> = opts.parse("ABC\nDEF").unwrap();
+        let opts = ascii_parse_opts();
+        let matrix = opts.parse_matrix::<String, u8>("ABC\nDEF", |x| x.to_string()).unwrap();
         let mut columns = matrix.columns().rev();
         let column1 = columns.next().unwrap();
         let values1: Vec<&String> = column1.iter().collect();

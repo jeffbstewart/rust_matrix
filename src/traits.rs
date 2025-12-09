@@ -1,7 +1,12 @@
 // Copyright 2025 Jeffrey B. Stewart <jeff@stewart.net>.  All Rights Reserved.
 
 use std::fmt::{Debug, Display};
+use std::hash::Hash;
 use std::ops::{Add, Index, IndexMut, Mul, Range, Sub};
+use crate::{DenseMatrix, MatrixAddress, MatrixColumnsIterator, MatrixForwardIndexedIterator, MatrixForwardIterator, MatrixRowsIterator, MatrixValueIterator};
+use crate::column::Column;
+use crate::factories::new_matrix;
+use crate::row::Row;
 
 /// Dimension is an axis of the storage.  In a vector there's a single Dimension (0)
 /// and it's the horizontal position within the vector.  For a matrix, there are two
@@ -40,18 +45,104 @@ pub trait Coordinate:
     + Debug
     + Default
     + Display
-    + TryInto<usize>
-    + TryFrom<usize>
+    + Hash
     + Mul<Output = Self>
+    + Ord
     + PartialOrd
     + Sub<Output = Self>
+    + TryFrom<usize>
+    + TryInto<usize>
     + Unit
 {
 }
 
+/// Matrix is a rectangular store of type T, providing a variety of
+/// useful iterator patterns.
+pub trait Matrix<'a, T, I>
+where
+    Self: Tensor<T, I, MatrixAddress<I>, 2>,
+    T: 'static,
+    I: Coordinate,
+{
+    /// row_count returns the number of horizontal rows stored in the Matrix.
+    fn row_count(&self) -> I;
+
+    /// column_count returns the number of vertical columns stored in the Matrix.
+    fn column_count(&self) -> I;
+
+    /// iter iterates over the values in a matrix in row-major order.
+    fn iter(&'a self) -> MatrixValueIterator<'a, T, I>;
+
+    /// addresses iterates over the addresses in a Matrix in row-major order.
+    fn addresses(&self) -> MatrixForwardIterator<I>;
+
+    /// indexed_iter returns addresses and their cell's contents as an iterator.
+    fn indexed_iter(&'a self) -> MatrixForwardIndexedIterator<'a, T, I>;
+
+    /// row retrieves a row by index.  None is returned for out of bounds row numbers.
+    fn row(&'a self, row_num: I) -> Option<Row<'a, T, I>>;
+
+    /// column retrieves a column by index.  None is returned for out of bounds column numbers.
+    fn column(&'a self, col_num: I) -> Option<Column<'a, T, I>>;
+
+    /// rows returns an iterator over the rows of the matrix.
+    fn rows(&'a self) -> MatrixRowsIterator<'a, T, I>;
+
+    /// columns returns an iterator over the columns of the matrix.
+    fn columns(&'a self) -> MatrixColumnsIterator<'a, T, I>;
+}
+
+/// MatrixMap provides convenience functions to transform one matrix into another.
+pub trait MatrixMap<'a, 'b, T, V, I>
+where
+    T: 'static,
+    V: 'static,
+    I: 'static + Coordinate,
+{
+    /// map creates a Matrix<V, I> from a Matrix<T, I> using a helper function
+    /// to transform each element.
+    fn map_matrix(&'a self, f: &'a dyn Fn(&T) -> V) -> DenseMatrix<V, I>;
+
+    /// map_indexed_matrix creates a Matrix<V, I> from a Matrix<T, I> using a helper
+    /// function that takes the address and value of each element.
+    fn map_indexed_matrix(&'a self, f: &mut dyn FnMut(MatrixAddress<I>, &T) -> V) -> DenseMatrix<V, I>;
+
+    /*
+    /// transpose returns a view on the underlying matrix with rows and columns swapped.
+    /// self must be mutable in order to support the IndexedMut trait.
+    /// Consider hoisting that trait into a different sub-trait of the matrix.
+    fn transpose(&'a mut self) -> impl Matrix<'c, T, I>;
+     */
+}
+
+impl <'a, 'b, T, V, I> MatrixMap<'a, 'b, T, V, I> for DenseMatrix<T, I>
+where
+    T: 'static,
+    V: 'static,
+    I: 'static + Coordinate,
+{
+    fn map_matrix(&'a self, f: &'a dyn Fn(&T) -> V) -> DenseMatrix<V, I> {
+        let values: Vec<V> = self.data.iter().map(f).collect();
+        new_matrix(self.row_count(), values).unwrap()
+    }
+
+    fn map_indexed_matrix(&'a self, f: &mut dyn FnMut(MatrixAddress<I>, &T) -> V) -> DenseMatrix<V, I> {
+        let values: Vec<V> = self.addresses()
+            .map(|addr| f(addr, self.get(addr).unwrap()))
+            .collect();
+        new_matrix(self.row_count(), values).unwrap()
+    }
+
+    /*
+    /// transpose returns a view of the matrix where the rows and columns are swapped.
+    fn transpose(&'a mut self) -> impl Matrix<'c, T, I> {
+        new_transposed_matrix(self)
+    }*/
+}
+
 /// Tensor is a generic multidimensional data store trait.  Think of it as a shared
 /// interface for a vector, a matrix, a cube, and a hypercube.
-pub trait Tensor<'a,
+pub trait Tensor<
     T,
     V: Copy + Unit + Add<Output = V> + Sub<Output = V> + PartialOrd,
     A: Address<V, DIMENSION>,
@@ -103,11 +194,13 @@ impl<T> Coordinate for T where
         + Debug
         + Default
         + Display
-        + TryInto<usize>
-        + TryFrom<usize>
+        + Hash
         + Mul<Output = Self>
+        + Ord
         + PartialOrd
         + Sub<Output = Self>
+        + TryFrom<usize>
+        + TryInto<usize>
         + Unit
 {
 }

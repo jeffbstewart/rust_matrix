@@ -8,11 +8,21 @@
 //! https://github.com/Daedelus1/RustTensors
 mod iter;
 mod matrix_address;
-mod matrix;
+mod dense_matrix;
 mod traits;
 mod error;
+mod row;
+mod column;
+mod format;
+mod factories;
+mod transpose;
 
+pub use column::*;
+pub use dense_matrix::*;
+pub use error::*;
+pub use factories::*;
+pub use format::*;
 pub use iter::*;
 pub use matrix_address::*;
-pub use matrix::*;
+pub use row::*;
 pub use traits::*;
