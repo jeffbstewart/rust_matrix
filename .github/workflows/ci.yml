@@ -1,0 +1,39 @@
+# The presubmit suite (cloister docs/grange.md R3): the "verify" check
+# the main ruleset requires.  Zero secrets by policy (R6) — the forge
+# lint audits Actions secrets to empty.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No Cargo.lock is committed, so no --locked; the runner's stable
+      # toolchain builds the crate directly.
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Test
+        run: cargo test --verbose
+
+      # The forge's own merge-path protections (cloister docs/grange.md
+      # R1-R8), asserted against this repo's pinned expectations.  The
+      # workflow token cannot read collaborator roles or Actions secrets,
+      # so those report UNVERIFIED (-allow-unverified downgrades them to
+      # warnings); the operator runs the same lint with an admin token
+      # for the full verdict.  Any readable rule that drifts still fails
+      # the PR.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Forge lint (merge-path protections)
+        env:
+          FORGE_LINT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: go run github.com/jeffbstewart/cloister/cmd/forge-lint@main -config .github/forge-lint.yaml -allow-unverified
