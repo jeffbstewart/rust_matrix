@@ -36,4 +36,4 @@ jobs:
       - name: Forge lint (merge-path protections)
         env:
           FORGE_LINT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: go run github.com/jeffbstewart/cloister/cmd/forge-lint@main -config .github/forge-lint.yaml -allow-unverified
+        run: go run github.com/jeffbstewart/forge-lint/cmd/forge-lint@v0.1.0 -config .github/forge-lint.yaml -allow-unverified
