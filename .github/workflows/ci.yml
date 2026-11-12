@@ -1,4 +1,4 @@
-# The presubmit suite (cloister docs/grange.md R3): the "verify" check
+# The presubmit suite (forge-lint docs/requirements.md R3): the "verify" check
 # the main ruleset requires.  Zero secrets by policy (R6) — the forge
 # lint audits Actions secrets to empty.
 name: ci
@@ -22,7 +22,7 @@ jobs:
       - name: Test
         run: cargo test --verbose
 
-      # The forge's own merge-path protections (cloister docs/grange.md
+      # The forge's own merge-path protections (forge-lint docs/requirements.md
       # R1-R8), asserted against this repo's pinned expectations.  The
       # workflow token cannot read collaborator roles or Actions secrets,
       # so those report UNVERIFIED (-allow-unverified downgrades them to
